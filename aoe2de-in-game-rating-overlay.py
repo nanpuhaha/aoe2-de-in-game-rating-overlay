@@ -77,7 +77,7 @@ COLOR_STRINGS = {
 
 loading_progress = {'steps':1, 'current':0}
 
-sg.set_options(tooltip_font=('"{}" {}'.format(FONT_TYPE, FONT_SIZE)))
+sg.set_options(tooltip_font=f'"{FONT_TYPE}" {FONT_SIZE}')
 
 
 class Rating():
@@ -114,15 +114,15 @@ class Player():
         self.civ = civ.pop() if civ else NO_DATA_STRING
 
         if self.name is None:
-            self.name = 'IA ' + self.civ
+            self.name = f'IA {self.civ}'
 
     def fetch_rating_information(self):
-        print('[Thread-1] Fetching 1v1 rating information for player {}'.format(self.name))
+        print(f'[Thread-1] Fetching 1v1 rating information for player {self.name}')
         if self.profile_id is not None:
-            url = AOE2NET_URL + 'player/ratinghistory?game=aoe2de&leaderboard_id=3&count=1&profile_id={}'.format(self.profile_id)
+            url = f'{AOE2NET_URL}player/ratinghistory?game=aoe2de&leaderboard_id=3&count=1&profile_id={self.profile_id}'
+
             print('[Thread-1] Fetching from:', url)
-            rating_1v1 = requests.get(url).json()
-            if rating_1v1:
+            if rating_1v1 := requests.get(url).json():
                 self.rating_1v1 = Rating(rating_1v1[0])
             else:
                 self.rating_1v1 = Rating()
@@ -130,12 +130,12 @@ class Player():
             self.rating_1v1 = Rating()
         loading_progress['current'] += 1
 
-        print('[Thread-1] Fetching TG rating information for player {}'.format(self.name))
+        print(f'[Thread-1] Fetching TG rating information for player {self.name}')
         if self.profile_id is not None:
-            url = AOE2NET_URL + 'player/ratinghistory?game=aoe2de&leaderboard_id=4&count=1&profile_id={}'.format(self.profile_id)
+            url = f'{AOE2NET_URL}player/ratinghistory?game=aoe2de&leaderboard_id=4&count=1&profile_id={self.profile_id}'
+
             print('[Thread-1] Fetching from:', url)
-            rating_tg = requests.get(url).json()
-            if rating_tg:
+            if rating_tg := requests.get(url).json():
                 self.rating_tg = Rating(rating_tg[0])
             else:
                 self.rating_tg = Rating()
@@ -168,7 +168,7 @@ class PlayerInformationPrinter():
         elif text_position == RIGHT:
             return 'P{number} [{elo}] ({tgelo}) {name}'.format(number=number, elo=elo, tgelo=tgelo, name=name)
         else:
-            raise Exception('Invalid text_position value: {}'.format(text_position))
+            raise Exception(f'Invalid text_position value: {text_position}')
 
 
 class InGameRatingOverlay():
@@ -229,7 +229,7 @@ class InGameRatingOverlay():
 
         while not self._finish:
             if self._strings is None:
-                url = AOE2NET_URL + 'strings?game=aoe2de&language=en'
+                url = f'{AOE2NET_URL}strings?game=aoe2de&language=en'
                 print('[Thread-0] Fetching from:', url)
                 try:
                     if number_of_retries != 0:
@@ -244,12 +244,13 @@ class InGameRatingOverlay():
 
             if self._is_server_ok:
                 percentage = int(loading_progress['current'] / loading_progress['steps'] * 100)
-                self._loading_information_window_text.update(value='Loading game information: {}%'.format(percentage))
-                self._loading_information_window.refresh()
+                self._loading_information_window_text.update(
+                    value=f'Loading game information: {percentage}%'
+                )
+
             else:
                 self._loading_information_window_text.update(value='Waiting for server...')
-                self._loading_information_window.refresh()
-
+            self._loading_information_window.refresh()
             if self._main_window is not None:
                 e1, v1 = self._main_window.read(50)
             else:
@@ -290,7 +291,7 @@ class InGameRatingOverlay():
             if (self._fetching_data or not self._is_server_ok) and (self._loading_information_window is None):
                 if self._fetching_data:
                     print('[Thread-0] Fetching new data')
-                elif not self._is_server_ok:
+                else:
                     print('[Thread-0] Server if offline')
                 if self._main_window is not None:
                     self._main_window.close()
@@ -443,10 +444,15 @@ class InGameRatingOverlay():
             self._main_window_last_location = main_current_location
             self._minimized_window_last_location = minimized_current_location
             location_file_path = WINDOW_LOCATION_FILE.format(os.getenv('USERPROFILE'))
-            location_file = open(location_file_path, 'w')
-            location_file.write(str(main_current_location[0]) + ',' + str(main_current_location[1]) + '\n')
-            location_file.write(str(minimized_current_location[0]) + ',' + str(minimized_current_location[1]))
-            location_file.close()
+            with open(location_file_path, 'w') as location_file:
+                location_file.write(
+                    f'{str(main_current_location[0])},{str(main_current_location[1])}'
+                    + '\n'
+                )
+
+                location_file.write(
+                    f'{str(minimized_current_location[0])},{str(minimized_current_location[1])}'
+                )
 
     def _update_game_information(self):
         while not self._finish:
@@ -457,16 +463,15 @@ class InGameRatingOverlay():
                 time.sleep(1)
                 continue
 
-            # Read AoE2.net profile ID from configuration file.
-            configuration_file = open(CONFIGURATION_FILE, 'r')
-            AOE2NET_PROFILE_ID = int(configuration_file.read())
-            configuration_file.close()
+            with open(CONFIGURATION_FILE, 'r') as configuration_file:
+                AOE2NET_PROFILE_ID = int(configuration_file.read())
             print('[Thread-1] AOE2NET_PROFILE_ID:', AOE2NET_PROFILE_ID)
 
             # Get Last/Current match.
             print('[Thread-1] Fetching game data...')
             try:
-                url = AOE2NET_URL + 'player/lastmatch?game=aoe2de&profile_id={}'.format(AOE2NET_PROFILE_ID)
+                url = f'{AOE2NET_URL}player/lastmatch?game=aoe2de&profile_id={AOE2NET_PROFILE_ID}'
+
                 print('[Thread-1] Fetching from:', url)
                 match_data = requests.get(url).json()
                 self._is_server_ok = True
@@ -480,9 +485,12 @@ class InGameRatingOverlay():
             print('[Thread-1] Fetching game data done!')
 
             if (self._current_match is None):
-                print('[Thread-1] New match id: {}'.format(new_match.match_id))            
+                print(f'[Thread-1] New match id: {new_match.match_id}')
             else:
-                print('[Thread-1] Current match id: {} - New match id: {}'.format(self._current_match.match_id, new_match.match_id))
+                print(
+                    f'[Thread-1] Current match id: {self._current_match.match_id} - New match id: {new_match.match_id}'
+                )
+
 
             if (self._current_match is None) or (self._current_match.match_id != new_match.match_id):
                 self._fetching_data = True
@@ -517,12 +525,14 @@ class InGameRatingOverlay():
                         player.rating_tg.rating,
                         player.team % 2
                     )
-                    max_text_size = max_text_size if max_text_size > len(player.text) else len(player.text)
+                    max_text_size = max(max_text_size, len(player.text))
 
                 auxiliar_counter = 0
                 number_of_players = self._current_match.number_of_players
                 for player in self._current_match.players:
-                    if ((number_of_players == 2) or (number_of_players == 4)) and any(p.team == -1 for p in self._current_match.players):
+                    if number_of_players in [2, 4] and any(
+                        p.team == -1 for p in self._current_match.players
+                    ):
                         column = auxiliar_counter
                         auxiliar_counter += 1
                     else:
@@ -558,14 +568,17 @@ class InGameRatingOverlay():
                 self._current_match_lock.release()
 
             if not self._finish:
-                print('[Thread-1] Waiting for {} seconds to next update or for "Refresh now" event.'.format(REFRESH_TIMEOUT))
+                print(
+                    f'[Thread-1] Waiting for {REFRESH_TIMEOUT} seconds to next update or for "Refresh now" event.'
+                )
+
                 self._event_refresh_game_information.wait(REFRESH_TIMEOUT)
                 self._event_refresh_game_information.clear()
 
 
 def previouse_version_cleanup():
     USERPROFILE = os.getenv('USERPROFILE')
-    old_file = '{}\\aoe2de-mp-ratings_window-location.txt'.format(USERPROFILE)
+    old_file = f'{USERPROFILE}\\aoe2de-mp-ratings_window-location.txt'
     new_file = WINDOW_LOCATION_FILE.format(USERPROFILE)
     if os.path.exists(old_file):
         os.rename(old_file, new_file)
